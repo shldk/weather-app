@@ -15,12 +15,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useCities } from "@/queries/useCities";
+import { City, useCities } from "@/queries/useCities";
 import { useDebounce } from "@uidotdev/usehooks";
 import { ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export function SearchBar() {
@@ -37,10 +37,14 @@ export function SearchBar() {
     error,
   } = useCities(debouncedSearchQuery);
 
-  const handleSelect = (city: string, latitude: number, longitude: number) => {
+  const history = useMemo(() => getSearchHistory(), [open]);
+
+  const handleSelect = (city: City) => {
+    const { name, latitude, longitude } = city;
     setOpen(false);
+    addToSearchHistory(city);
     router.push(
-      `/${encodeURIComponent(city)}?latitude=${latitude}&longitude=${longitude}`,
+      `/${encodeURIComponent(name)}?latitude=${latitude}&longitude=${longitude}`,
     );
   };
 
@@ -89,13 +93,33 @@ export function SearchBar() {
                 </CommandEmpty>
               )}
               <CommandGroup>
+                {!debouncedSearchQuery.length && (
+                  <div className="flex flex-col gap-2">
+                    <h4 className="px-2 pt-2 text-sm font-medium text-muted-foreground">
+                      Search history
+                    </h4>
+                    {history.map((city: City) => (
+                      <div key={city.id}>
+                        <CommandItem
+                          className="items-start"
+                          key={city.id}
+                          onSelect={() => handleSelect(city)}
+                        >
+                          <span className="whitespace-nowrap">{city.name}</span>
+                          <span className="ml-auto text-right text-muted-foreground">
+                            {`${city.area}, ${city.country}`}
+                          </span>
+                        </CommandItem>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {cities?.map((city) => (
                   <CommandItem
                     className="items-start"
                     key={city.id}
-                    onSelect={() =>
-                      handleSelect(city.name, city.latitude, city.longitude)
-                    }
+                    onSelect={() => handleSelect(city)}
                   >
                     <span className="whitespace-nowrap">{city.name}</span>
                     <span className="ml-auto text-right text-muted-foreground">
@@ -134,4 +158,15 @@ export function SearchBar() {
     //   </CommandDialog>
     // </>
   );
+}
+
+function addToSearchHistory(city: City) {
+  const history = getSearchHistory().filter((c: City) => c.id !== city.id);
+  history.unshift(city);
+  localStorage.setItem("searchHistory", JSON.stringify(history));
+}
+
+function getSearchHistory() {
+  const existingHistory = localStorage.getItem("searchHistory");
+  return existingHistory ? JSON.parse(existingHistory) : [];
 }

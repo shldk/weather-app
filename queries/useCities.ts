@@ -25,7 +25,6 @@ export const useCities = (searchQuery: string) => {
     queryFn: () => fetchCities(searchQuery),
     enabled: !!searchQuery,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (previousData, previousQuery) => previousData,
   });
 };
 
